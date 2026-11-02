@@ -33,7 +33,8 @@ One JSON object per POST, at most 4 KB.
 {"routines":{"bot":"X Writer","items":[{"name":"Morning thread","schedule":"daily 09:00","next_run":"2026-11-02T09:00:00+02:00"}]}}
 ```
 
-- **status**, posted on every status change of any bot. `bot` is the exact name, `status` is one of `working`, `idle`, `waiting_user`, `error`, `done`, `step` is what the bot does, at most 80 characters. `group` (optional) is the bot's team: each team gets its own floor of the office.
+- **status**, posted on every status change of any bot. `bot` is the exact name, `status` is one of `working`, `idle`, `waiting_user`, `error`, `done`, `step` is what the bot does, at most 80 characters. `group` (optional) is a floor label. The usual way to set floors is the `groups` message below: each value is one floor, used exactly as written (a sidebar section such as `Personal` or `Home IT`). A bot with no label is on the `Unassigned` floor.
+- **groups**: `{"groups":{"Bot A":"Personal","Bot B":"Home IT"}}`. One floor per label. Names are not translated or matched to a fixed team list.
 - **roster**: the exact names of all your bots, so quiet bots show up too. Re-posted every morning.
 - **looks**: one look per bot. `shape` is one of `sphere`, `rounded_cube`, `pill`, `triangle`, `cone`, `pentagon`, `hexagon`, `star4`, `star6`, `clover`, `rounded_square`, `trio`. `accessory` is one of `none`, `glasses`, `stem`, `antenna`, `bow`. `color` is `#RRGGBB`. Details in `docs/AVATARS.md`. Re-posted every morning.
 - **usage**: total used in percent, when it resets, and per bot. Fields the bot does not know are left out. Posted every 2 hours.
@@ -65,10 +66,10 @@ Texas Hill Country is a Central Texas ranch around the tower: limestone and ceda
 Each floor can also wear its own interior. The Theme menu has a select per floor (saved in this browser). A feed message can set them too, and the saved choice wins:
 
 ```json
-{"floor_themes":{"Ops":"ranch","Design":"coffee"}}
+{"floor_themes":{"Ranch":"office","Home IT":"casita"}}
 ```
 
-Teams named Design, Dev, Content, Privacy, Home, and Ops pick a coffee bar, an arcade, a studio, a vault, a build site, and a bunkhouse when nobody has chosen. Any other name follows the building theme. Details and the default map: `docs/THEMES.md`.
+With no saved choice and no feed key, the floor name is matched against a short keyword list (case-insensitive): `Ranch` is a bunkhouse, `Home IT` a casita, `Personal` a bunkhouse, `Work` a plain office, a name containing `studio` an arcade, a name containing `taste` or `media` a studio, `Security` a vault. `Unassigned`, and any name that matches nothing, follow the building theme. The list lives in one table, `web/theme/floor-theme-rules.js`. Details: `docs/THEMES.md`.
 
 ### Troubleshooting
 

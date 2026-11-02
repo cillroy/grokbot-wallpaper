@@ -1,4 +1,4 @@
-// Content floor: a tiny recording set. Ring light, camera, mic, posters.
+// Studio interior. Ring light, camera, mic, posters.
 import * as THREE from 'three';
 import { box, cachedProps, canvasTex, cluster, cyl, lit, mat, sign } from '../kit.js';
 

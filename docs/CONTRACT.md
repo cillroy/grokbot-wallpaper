@@ -70,10 +70,11 @@ line, file truncation/rotation.
 ## 3. Floors
 
 - Floor = theme. Max **20 bots per floor** (5×4 desks). Floor of a bot: `data/floors.json` mapping if
-  present, else its `group`, else `Общий этаж` (id `general`).
+  present, else its `group`, else `Unassigned` (id `unassigned`).
+- The group string is the floor name as written. It is not renamed, and there is no built-in list of teams.
+  The id is the slug of that name. Configured floors come first, then other floors in the order they were
+  first seen, and `Unassigned` last.
 - Overflow: 21st bot of a group goes to floor `<id>-2` named `<name> · 2`.
-- Floor ids for demo: `coordination` Координация, `x-content` X-контент, `publishing` Публикации,
-  `finance` Финансы. Order = as listed.
 
 ## 4. State API (server → browser)
 
@@ -88,12 +89,12 @@ nothing changed. Browser polls every 1000 ms (no SSE in v1: Cloudflare quick tun
   "summary": {"working": 6, "idle": 5, "waiting_user": 2, "error": 1, "stuck": 1, "done": 0, "total": 15},
   "usage": {"period": "week", "total_used_pct": 37, "resets_at": "2026-11-03T00:00:00+02:00", "updated_at": "2026-10-31T18:00:00+02:00"},
   "floors": [
-    {"id": "x-content", "name": "X-контент", "order": 2, "bots": ["x-writer", "qt-scout"],
+    {"id": "x-kontent", "name": "X-контент", "order": 2, "bots": ["x-writer", "qt-scout"],
      "counts": {"working": 4, "idle": 3, "waiting_user": 1, "error": 0, "stuck": 1, "done": 0}, "free_desks": 11}
   ],
   "bots": {
     "x-writer": {
-      "id": "x-writer", "name": "X Writer", "floor": "x-content", "desk": 1, "group": "X-контент",
+      "id": "x-writer", "name": "X Writer", "floor": "x-kontent", "desk": 1, "group": "X-контент",
       "status": "working", "effective_status": "working",
       "step": "пишу драфт поста про Topaz", "task": "tsk-1643",
       "since": "2026-10-31T18:51:00+02:00", "last_event": "2026-10-31T18:58:40+02:00",
@@ -329,12 +330,13 @@ Product rule from v2 made concrete: any user's bots get a blob without Blender.
 The exterior of the tower is one theme for the whole building (`docs/THEMES.md`). Each floor can wear its own interior. On the ntfy dashboard (`web/feed.js`) a message may set them:
 
 ```json
-{"floor_themes":{"Ops":"ranch","Design":"coffee"}}
+{"floor_themes":{"Ranch":"office","Home IT":"casita"}}
 ```
 
-- Keys are floor names (the team names), matched case-insensitively. Values are interior ids: `coffee`, `arcade`, `studio`, `vault`, `casita`, `ranch`, or `office` for the plain interior.
+- Keys are floor names (the group labels), matched case-insensitively. Values are interior ids: `coffee`, `arcade`, `studio`, `vault`, `casita`, `ranch`, or `office` for the plain interior.
 - Messages merge. A later message updates only the keys it contains. `"auto"` or `""` clears that key.
 - An unknown id is ignored.
 - A choice saved in the browser (`localStorage` `bothq.floorThemes`) wins over the feed for that floor.
-- With no feed key and no saved choice, the team names Ops, Privacy, Home, Content, Design, and Dev pick the interiors in `docs/THEMES.md`. Any other name follows the exterior theme.
+- With no feed key and no saved choice, the floor name is matched against the keyword table in `docs/THEMES.md`. `Unassigned`, and a name that matches nothing, follow the exterior theme.
+- Floors come from a `groups` message, `{"groups":{"Bot A":"Personal","Bot B":"Work"}}`. Each value is the floor name, used as written. A bot with no label is on `Unassigned`.
 - The ntfy topic stays in the URL hash. This message is not sent anywhere but the channel the page already reads.

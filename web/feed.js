@@ -9,7 +9,7 @@
 //   {"roster":["Bot A","Bot B"]}                                                every bot appears, idle until it posts
 //   {"looks":{"Bot A":{"shape":"sphere","color":"#RRGGBB","accessory":"none"}}} how each bot's blob looks
 //   {"type":"usage","total_used_pct":37,"resets_at":"…","bots":{"Bot A":4.1}}  the weekly limit meter
-//   {"groups":{"Bot A":"Content"}}                                            teams, one floor each
+//   {"groups":{"Bot A":"Personal","Bot B":"Home IT"}}                         sidebar sections, one floor each
 //   {"chat":{"Bot A":"grokbot://app/v1/agent?id=…"}}                         each bot's chat, for «Open chat»
 //   {"routines":{"bot":"Bot A","items":[{"name":"…","schedule":"…","next_run":"ISO"}]}}   a bot's routines
 // On top of the server's state the office gets state.finished (done lines of the last 24 h, newest first) and
@@ -102,7 +102,7 @@ export async function connectFeed({ topic, server }, onState) {
       store.setBotsConfig(cfg);
       return true;
     }
-    if (isMap(rec.groups)) {                             // {"groups":{"Bot A":"Content"}}: the main bot's teams = floors
+    if (isMap(rec.groups)) {                             // {"groups":{"Bot A":"Personal"}}: each label is one floor, used as written
       for (const [name, team] of Object.entries(rec.groups).slice(0, 400)) {
         if (typeof team === 'string' && team.trim()) (cfg[name] ||= {}).floor = team.trim().slice(0, 40);
       }
@@ -116,7 +116,7 @@ export async function connectFeed({ topic, server }, onState) {
       store.setBotsConfig(cfg);
       return true;
     }
-    if (isMap(rec.floor_themes)) {                       // {"floor_themes":{"Ops":"ranch"}} — keys merge; "" or "auto" clears one
+    if (isMap(rec.floor_themes)) {                       // {"floor_themes":{"Ranch":"office"}} — keys merge; "" or "auto" clears one
       for (const [name, id] of Object.entries(rec.floor_themes).slice(0, 40)) {
         if (typeof name !== 'string' || !name.trim()) continue;
         const key = name.trim().slice(0, 40);

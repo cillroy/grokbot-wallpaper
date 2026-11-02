@@ -1,4 +1,4 @@
-// Privacy floor: a noir vault. Safe door, filing cabinets, a shredder, one green lamp.
+// Vault interior. Safe door, filing cabinets, a shredder, one green lamp.
 import * as THREE from 'three';
 import { box, cachedProps, cluster, cyl, lit, mat } from '../kit.js';
 

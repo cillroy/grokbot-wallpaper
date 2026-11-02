@@ -1,4 +1,4 @@
-// Home floor: a build site. Sawhorses, lumber, a blueprint, hard hats.
+// Casita interior. Sawhorses, lumber, a blueprint, hard hats.
 import * as THREE from 'three';
 import { box, cachedProps, canvasTex, cluster, cyl, mat, sign } from '../kit.js';
 

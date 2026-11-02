@@ -2,11 +2,13 @@
 //
 // Resolution for a floor name, first hit wins:
 //   1. localStorage bothq.floorThemes[name]   (the Theme menu; "office" forces the plain interior)
-//   2. state.floor_themes from the feed       {"floor_themes":{"Ops":"ranch"}}
-//   3. DEFAULT_FLOOR_THEMES                   team name → interior, case-insensitive
+//   2. state.floor_themes from the feed       {"floor_themes":{"Ranch":"office"}}
+//   3. guessFloorTheme(name)                  keyword table in floor-theme-rules.js
 //   4. the exterior theme, if it is also an interior (ranch)
 //   5. the plain office interior
-// An unknown id is treated as unset, so a typo does not block the default.
+// An unknown id is treated as unset, so a typo does not block the next step.
+// A keyword guess of "office" is the plain interior and does not fall through to the exterior.
+// "Unassigned" skips the guess and uses the exterior.
 
 import { arcadeInterior } from './interiors/arcade.js';
 import { casitaInterior } from './interiors/casita.js';
@@ -14,18 +16,11 @@ import { coffeeInterior } from './interiors/coffee.js';
 import { ranchInterior } from './interiors/ranch.js';
 import { studioInterior } from './interiors/studio.js';
 import { vaultInterior } from './interiors/vault.js';
+import { guessFloorTheme } from './floor-theme-rules.js';
+
+export { FLOOR_THEME_RULES, guessFloorTheme } from './floor-theme-rules.js';
 
 export const FLOOR_THEME_KEY = 'bothq.floorThemes';
-
-/** Team name → interior id. The only place this mapping lives. */
-export const DEFAULT_FLOOR_THEMES = {
-  ops: 'ranch',
-  privacy: 'vault',
-  home: 'casita',
-  content: 'studio',
-  design: 'coffee',
-  dev: 'arcade',
-};
 
 const ALL = [coffeeInterior, arcadeInterior, studioInterior, vaultInterior, casitaInterior, ranchInterior];
 const BY_ID = Object.fromEntries(ALL.map((t) => [t.id, t]));
@@ -82,8 +77,9 @@ export function resolveFloorInterior(floor, { feed = null, exteriorId = null } =
     if (id === 'office') return null;
     if (id && BY_ID[id]) return BY_ID[id];
   }
-  const mapped = DEFAULT_FLOOR_THEMES[name.trim().toLowerCase()];
-  if (mapped && BY_ID[mapped]) return BY_ID[mapped];
+  const guessed = guessFloorTheme(name);
+  if (guessed === 'office') return null;
+  if (guessed && BY_ID[guessed]) return BY_ID[guessed];
   if (exteriorId && BY_ID[exteriorId]) return BY_ID[exteriorId];
   return null;
 }

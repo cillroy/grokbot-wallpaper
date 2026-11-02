@@ -1,4 +1,4 @@
-// Design floor: a coffee bar. Chalk menu, espresso machine, cups.
+// Coffee bar interior. Chalk menu, espresso machine, cups.
 import { box, cachedProps, canvasTex, cluster, cyl, lit, mat, sign } from '../kit.js';
 
 const tint = {
