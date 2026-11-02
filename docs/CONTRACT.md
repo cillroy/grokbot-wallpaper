@@ -324,9 +324,9 @@ Product rule from v2 made concrete: any user's bots get a blob without Blender.
   hash fallback, the 15 demo bots (hand-made GLB next to the generated one, looks in `web/data/demo-looks.json`),
   an office-scale strip and a self-test (triangle budget, GLB structure, determinism).
 
-## Floor interiors (ntfy dashboard)
+## Floor interiors (private feed)
 
-The exterior of the tower is one theme for the whole building (`docs/THEMES.md`). Each floor can wear its own interior. On the ntfy dashboard (`web/feed.js`) a message may set them:
+The exterior of the tower is one theme for the whole building (`docs/THEMES.md`). Each floor can wear its own interior. On the private-feed dashboard (`web/feed.js`) a message may set them:
 
 ```json
 {"floor_themes":{"Ops":"ranch","Design":"coffee"}}
@@ -337,4 +337,4 @@ The exterior of the tower is one theme for the whole building (`docs/THEMES.md`)
 - An unknown id is ignored.
 - A choice saved in the browser (`localStorage` `bothq.floorThemes`) wins over the feed for that floor.
 - With no feed key and no saved choice, the team names Ops, Privacy, Home, Content, Design, and Dev pick the interiors in `docs/THEMES.md`. Any other name follows the exterior theme.
-- The ntfy topic stays in the URL hash. This message is not sent anywhere but the channel the page already reads.
+- The feed base URL and the read key stay in the URL fragment (`#feed=…&key=…`). This message is not sent anywhere but the feed the page already reads (`POST /post` with the write key, `GET /feed` with the read key).

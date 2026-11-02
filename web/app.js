@@ -1,8 +1,9 @@
 // Glue: polls /api/state (CONTRACT §4), keeps the view (floor, selection), feeds the scene and the UI.
-// With #<topic> in the link it reads the user's bots from their ntfy.sh channel instead (feed.js): no server at all.
+// With #feed=<base>&key=<read key> it polls that private feed instead (feed.js). The fragment is never sent to GitHub Pages.
 // Without either (static preview) it runs on web/data/demo-state.json with a local simulation.
 import { initScene, renderScene, zoom, focusBot } from './scene/scene.js';
 import { initSound, sfx } from './audio/sound.js';
+import { feedFromHash, connectFeed } from './feed.js';
 import { bootTheme, mountThemePicker, onFloorThemesChanged, syncFloorThemeMenu, paintFloorAccents } from './theme/themes.js';
 
 const POLL_MS = 1000;
@@ -18,7 +19,7 @@ const params = new URLSearchParams(location.search);
 const WALLPAPER = params.get('mode') === 'wallpaper';
 if (WALLPAPER) document.documentElement.classList.add('wallpaper');
 
-// Theme is ?theme= and localStorage (web/theme/). It must stay out of the hash: the hash is only the ntfy topic.
+// Theme is ?theme= and localStorage (web/theme/). It stays in the query so the feed link can keep the fragment.
 await bootTheme();
 
 try {
@@ -144,13 +145,27 @@ async function poll() {
   setTimeout(poll, POLL_MS);
 }
 
-// ---------- the user's own bots: #<topic> ----------
+// ---------- the user's own bots: #feed=<base>&key=<read key> ----------
 
-if (/^#[A-Za-z0-9_-]{6,64}(&ntfy=[^&]+)?$/.test(location.hash)) {
-  const { feedFromHash, connectFeed } = await import('./feed.js');
-  connectFeed(feedFromHash(location.hash), (data) => { state = data; render(); });
-  addEventListener('hashchange', () => location.reload());   // another channel: start over
+function setFeedStatus(mode) {
+  let el = document.getElementById('bhq-feed-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'bhq-feed-status';
+    el.className = 'feed-status';
+    document.body.append(el);
+  }
+  if (!mode) { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = mode === 'offline' ? 'feed offline' : 'not connected';
+}
+
+const feedLink = feedFromHash(location.hash);
+if (feedLink) {
+  connectFeed(feedLink, (data) => { state = data; render(); }, setFeedStatus);
+  addEventListener('hashchange', () => location.reload());
 } else {
+  setFeedStatus('not connected');
   poll();
 }
 

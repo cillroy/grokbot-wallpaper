@@ -6,19 +6,45 @@ line per step to a journal, a tiny Node server tails it, the browser renders the
 
 Work in progress.
 
-## Your own bots (no server)
+## Your own bots (private feed)
 
-You do not need to run anything to see your own bots. They post their status to a private channel on ntfy.sh, and the dashboard and the wallpaper read it.
+The dashboard and the wallpaper are static pages. Bots post JSON lines to a feed you host (a Cloudflare Worker, or anything that speaks the same two routes). The browser polls that feed. The address and the keys stay in the link fragment, which GitHub Pages never receives.
 
-### How it works
+### The contract
 
-Each bot runs one `curl` on its own box whenever its status changes and sends a short JSON line to `https://ntfy.sh/<topic>`. The dashboard and the wallpaper are static pages on GitHub Pages: your browser reads that channel straight from ntfy.sh (the last 12 hours, then live) and draws the office. There is no server and no tunnel, and nothing connects in to the bots' box: they only make outbound HTTPS calls.
+Placeholder only: `https://feed.example.workers.dev`. Use your own base URL. Two keys: a write key for the bots, a read key for the dashboard.
+
+```sh
+# a bot posts one JSON object (at most 4 KB)
+curl -s -X POST -H "Authorization: Bearer <write key>" -H "Content-Type: application/json" \
+  -d '{"bot":"X Writer","status":"working","step":"drafting a post"}' \
+  "https://feed.example.workers.dev/post"
+
+# the dashboard polls, oldest first. The first poll omits since.
+curl -s -H "Authorization: Bearer <read key>" \
+  "https://feed.example.workers.dev/feed?since=<last id>"
+```
+
+`GET /feed` returns:
+
+```json
+{"messages":[{"id":"1","time":1730000000,"event":"message","message":"{\"bot\":\"X Writer\",\"status\":\"working\",\"step\":\"drafting a post\"}"}]}
+```
+
+`time` is unix seconds. `message` is the JSON line as a string. The dashboard sends the read key only as `Authorization: Bearer`, never in the URL it requests.
+
+### The link
+
+```text
+https://cillroy.github.io/grokbot-wallpaper/web/?theme=ranch#feed=<urlencoded base>&key=<read key>
+```
+
+`?theme=` stays in the query. `#feed` and `#key` stay in the fragment. No fragment means the page shows **not connected** (and the local demo, if the journal server is not running). A failed poll shows **feed offline** and retries every 30 seconds; a healthy poll is every 5 seconds.
 
 ### Setup
 
-1. Copy the block from `PROMPT.md` and paste it into your Grok Bot once. It makes the topic (`gbw-` plus 22 random letters and digits), saves the posting rule in the shared memory of all your bots, posts the roster and a look for each bot, and sets up the daily and 2-hourly routines.
-2. The bot replies with two links. Open the dashboard in a browser: `https://bodila51.github.io/grokbot-wallpaper/#<topic>`.
-3. For the wallpaper, use the second link as a web wallpaper in Lively (Windows, `lively/README.md`) or the Mac app (`mac/README.md`): `https://bodila51.github.io/grokbot-wallpaper/face/#<topic>`.
+1. Put your base URL, write key, and read key into `PROMPT.md` (the placeholders), then paste that block into your Grok Bot once. It saves the posting rule, posts the roster and a look for each bot, and sets up the daily routines.
+2. Open the dashboard link the bot replies with. The wallpaper uses the same fragment: `https://cillroy.github.io/grokbot-wallpaper/face/#feed=<urlencoded base>&key=<read key>`.
 
 ### The line formats
 
@@ -40,25 +66,19 @@ One JSON object per POST, at most 4 KB.
 
 ### Privacy
 
-- The topic is the password. Anyone who has it can read your bots' statuses and post fake ones, so do not share the links. The dashboard link keeps the topic after the `#`, which the browser never sends to GitHub Pages; the wallpaper link carries it as `?feed=`, so treat that one as more exposed.
-- ntfy is not encrypted end to end: the ntfy server can read every line. Keep secrets and personal data out of `step`.
-- ntfy.sh keeps messages for 12 hours. The dashboard caches the last state in your browser, so it still shows your bots after that; clear the site data to remove it.
-- To change the topic, ask your bot to make a new one and run the setup again.
-
-### Limits
-
-The free ntfy.sh tier allows 250 messages a day per IP address. Every status change is one message, so about 50 or more bots (or a few very busy ones) need a paid ntfy plan or your own ntfy server.
-
-For your own server, add `&ntfy=https://your.server` to the dashboard link (`#<topic>&ntfy=https://your.server`), or to the wallpaper link (`?feed=<topic>&ntfy=https://your.server`). Tell the bots to post to that server instead of `https://ntfy.sh`. The server needs HTTPS and must be reachable from both the bots' box and your browser.
+- The read key is the password for the dashboard. Anyone who has the link can read statuses and, if they also have the write key, post lines. Do not share either key. Both keys belong in the fragment or in the bot's own memory, not in a query string.
+- Your feed host can read every line. Keep secrets and personal data out of `step`.
+- The dashboard caches the last lines in this browser. Clear the site data to remove them.
+- To rotate a key, issue a new one on the feed and update the link and the bots.
 
 ### Themes
 
-The office is the default. Nothing in the scene or the cards changes until a theme is selected, and the ntfy topic stays in the hash.
+The office is the default. Nothing in the scene or the cards changes until a theme is selected, and the feed link stays in the hash.
 
 - **This visit:** put `?theme=ranch` in front of the hash. `?theme=office` (or `default`) forces the office.
-  `https://cillroy.github.io/grokbot-wallpaper/web/?theme=ranch#<topic>`
+  `https://cillroy.github.io/grokbot-wallpaper/web/?theme=ranch#feed=<urlencoded base>&key=<read key>`
 - **Remembered:** the Theme menu on the right of the top bar (Office or Texas Hill Country) saves the choice in this browser under `bothq.theme`. A link with `?theme=` wins for that visit; with no query, the saved choice is used. An unknown id is ignored.
-- The same query works on the wallpaper: `?mode=wallpaper&theme=ranch#<topic>`. A choice saved on the dashboard applies to the wallpaper on the same origin.
+- The same query works on the wallpaper: `?mode=wallpaper&theme=ranch#feed=<urlencoded base>&key=<read key>`. A choice saved on the dashboard applies to the wallpaper on the same origin.
 
 Texas Hill Country is a Central Texas ranch around the tower: limestone and cedar, live oak and mesquite, a tin-roof barn, sunset light. Bots, floors, usage and chat links are unchanged. How a theme is shaped, and how to add one: `docs/THEMES.md`.
 
@@ -73,12 +93,12 @@ Teams named Design, Dev, Content, Privacy, Home, and Ops pick a coffee bar, an a
 ### Troubleshooting
 
 ```sh
-curl "https://ntfy.sh/<topic>/json?poll=1&since=1h"
+curl -s -H "Authorization: Bearer <read key>" "https://feed.example.workers.dev/feed"
 ```
 
-1. No lines: the bots have not posted, or post to another topic. Ask a bot to post a test status line and compare its topic, letter by letter, with the one in your link.
-2. Lines appear but the dashboard is empty: the link has another topic, or the lines are not valid JSON (they are skipped). Open the link from the bot's reply again.
-3. An error about a limit: the daily message limit is reached, see Limits.
+1. The page says **not connected**: the link has no `#feed=` and `#key=`, or the base URL is not `https` (localhost may be `http`).
+2. The page says **feed offline**: the feed did not answer, or the read key was rejected. The page retries every 30 seconds.
+3. Lines appear in `GET /feed` but the office is empty: the `message` field is not a JSON object the office understands (those lines are skipped).
 
 ## Run
 
