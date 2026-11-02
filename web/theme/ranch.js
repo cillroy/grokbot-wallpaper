@@ -37,14 +37,20 @@ export const ranchTheme = {
 // Warm the tower once, before it is cloned: baked lightmaps pick up a limestone multiply,
 // neutrals drift toward cedar and iron, plants toward live oak. Blobs are not in these templates.
 function restyleOffice(templates) {
+  const openMats = new Set();
+  templates.floor_open?.traverse?.((o) => {
+    if (!o.isMesh) return;
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of list) if (m) openMats.add(m);
+  });
   const seen = new Set();
-  for (const root of Object.values(templates)) {
-    if (!root?.traverse) continue;
+  for (const [name, root] of Object.entries(templates)) {
+    if (name === 'floor_open' || !root?.traverse) continue; // interiors tint the open floor themselves
     root.traverse((o) => {
       if (!o.isMesh) return;
       const list = Array.isArray(o.material) ? o.material : [o.material];
       for (const m of list) {
-        if (!m || seen.has(m)) continue;
+        if (!m || seen.has(m) || openMats.has(m)) continue;
         seen.add(m);
         tintMaterial(m);
       }

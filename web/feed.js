@@ -42,6 +42,7 @@ export async function connectFeed({ topic, server }, onState) {
   const store = new StateStore({ tz, hasAvatar: (id) => HANDMADE.has(id) });   // others get a generated blob, no 404 probe
   const cfg = {};                                        // per bot name: { look, chat_url } -> the store's bots config
   const routines = new Map();                            // bot id -> { name, items }
+  const floorThemes = {};                                // team name -> interior id, from {"floor_themes":{...}}
   let lines = [], lastId = null, saveTimer = 0;
   const seen = new Set();
 
@@ -115,6 +116,15 @@ export async function connectFeed({ topic, server }, onState) {
       store.setBotsConfig(cfg);
       return true;
     }
+    if (isMap(rec.floor_themes)) {                       // {"floor_themes":{"Ops":"ranch"}} — keys merge; "" or "auto" clears one
+      for (const [name, id] of Object.entries(rec.floor_themes).slice(0, 40)) {
+        if (typeof name !== 'string' || !name.trim()) continue;
+        const key = name.trim().slice(0, 40);
+        if (typeof id !== 'string' || !id.trim() || /^(auto)$/i.test(id.trim())) delete floorThemes[key];
+        else floorThemes[key] = id.trim().toLowerCase().slice(0, 24);
+      }
+      return true;
+    }
     if (isMap(rec.routines)) {
       const name = typeof rec.routines.bot === 'string' ? rec.routines.bot.trim().slice(0, 80) : '';
       if (!name || !Array.isArray(rec.routines.items)) return false;
@@ -139,6 +149,7 @@ export async function connectFeed({ topic, server }, onState) {
       if (rec?.status !== 'done' || typeof rec.bot !== 'string') continue;
       finished.push({ t: typeof rec.t === 'string' ? rec.t : new Date(l.time * 1000).toISOString(), bot: botIdFor(rec.bot), name: rec.bot.slice(0, 80), step: String(rec.step ?? '').slice(0, 80) });
     }
+    s.floor_themes = { ...floorThemes };
     s.finished = finished;
     s.routines = [...routines].flatMap(([bot, { name, items }]) => items.map((r) => ({ bot, name, ...r })))
       .sort((a, b) => (a.next_run ? Date.parse(a.next_run) : Infinity) - (b.next_run ? Date.parse(b.next_run) : Infinity));
