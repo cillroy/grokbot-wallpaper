@@ -1,89 +1,113 @@
-// Bots-only mode: the office reads the user's bots straight from their ntfy.sh channel. No server, no tunnel.
-// The link is …/#<topic> (optionally &ntfy=<https server>). The topic lives in the hash, so it never reaches any
-// server but ntfy. The same reducer the local server uses (lib/state.js) turns the lines into the office's state.
-// ntfy keeps 12 hours, so the newest lines are cached per topic in localStorage and replayed first: after a quiet
-// night the office is not empty, every bot is still there, resting.
+// Private feed: the office polls a feed the user hosts (a Cloudflare Worker, or anything that speaks the
+// same HTTP contract). The link is …/#feed=<urlencoded base URL>&key=<read key>. Both values live in the
+// fragment, so GitHub Pages never sees them. The key is sent only as Authorization: Bearer to that base.
 //
-// Lines on the channel (one JSON object per message, at most 4 KB, anything else is dropped):
-//   {"bot":"…","status":"working|idle|waiting_user|error|done","step":"…"}     a status change
-//   {"roster":["Bot A","Bot B"]}                                                every bot appears, idle until it posts
-//   {"looks":{"Bot A":{"shape":"sphere","color":"#RRGGBB","accessory":"none"}}} how each bot's blob looks
-//   {"type":"usage","total_used_pct":37,"resets_at":"…","bots":{"Bot A":4.1}}  the weekly limit meter
-//   {"groups":{"Bot A":"Content"}}                                            teams, one floor each
-//   {"chat":{"Bot A":"grokbot://app/v1/agent?id=…"}}                         each bot's chat, for «Open chat»
-//   {"routines":{"bot":"Bot A","items":[{"name":"…","schedule":"…","next_run":"ISO"}]}}   a bot's routines
-// On top of the server's state the office gets state.finished (done lines of the last 24 h, newest first) and
-// state.routines (every bot's routines, soonest first), for the «Finished» and «Routines» panels.
+// GET <base>/feed            the backlog, oldest first, on the first poll (no since)
+// GET <base>/feed?since=<id> messages newer than that id, oldest first, every 5 s
+// Each item is { id, time (unix seconds), event: "message", message: "<JSON string>" }.
+// The JSON strings are the same lines as before: status, roster, looks, usage, groups, chat, routines, floor_themes.
+// A failed poll waits 30 s and tries again. The last lines are cached in this browser so a quiet outage is not an empty office.
 import { StateStore, botIdFor } from './lib/state.js';
 
 const MAX_LINE = 4096, KEEP = 600, TICK_MS = 30e3, DAY_MS = 24 * 3600e3;
+const POLL_OK = 5000, POLL_ERR = 30000;
 const HANDMADE = new Set(['grok-bot', 'jevopus', 'x-writer', 'banner-visuals', 'analytics-analyst', 'competitor-watch', 'qt-scout',
-  'ideas-sparring', 'bookmarks-brain', 'codila-x-researcher', 'trendy-x', 'substack', 'x-ads-manager', 'warren-buffett', 'finance-team']);   // assets/blobs/<id>.glb
+  'ideas-sparring', 'bookmarks-brain', 'codila-x-researcher', 'trendy-x', 'substack', 'x-ads-manager', 'warren-buffett', 'finance-team']);
 
-/** `#<topic>` or `#<topic>&ntfy=<server>` -> { topic, server }, else null. */
+/** `#feed=<urlencoded base>&key=<read key>` → { base, key }, else null. http is only allowed on localhost. */
 export function feedFromHash(hash) {
-  const m = /^#([A-Za-z0-9_-]{6,64})(?:&ntfy=([^&]+))?$/.exec(hash || '');
-  if (!m) return null;
-  let server = 'https://ntfy.sh';
-  if (m[2]) {
-    try {
-      const u = new URL(decodeURIComponent(m[2]));
-      if (u.protocol === 'https:' || u.hostname === 'localhost') server = (u.origin + u.pathname).replace(/\/+$/, '');
-    } catch { /* not a URL: stay on ntfy.sh */ }
-  }
-  return { topic: m[1], server };
+  const raw = String(hash || '').replace(/^#/, '');
+  if (!raw) return null;
+  let params;
+  try { params = new URLSearchParams(raw); } catch { return null; }
+  const feed = params.get('feed');
+  const key = params.get('key');
+  if (!feed || !key) return null;
+  let base;
+  try {
+    const u = new URL(feed);
+    const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+    if (u.protocol !== 'https:' && !(u.protocol === 'http:' && local)) return null;
+    base = (u.origin + u.pathname).replace(/\/+$/, '');
+  } catch { return null; }
+  if (key.length > 512) return null;
+  return { base, key };
 }
 
-/** Rebuild from cache + the channel's last 12 h, then follow it live. Calls onState(state) on every change. */
-export async function connectFeed({ topic, server }, onState) {
-  const base = `${server}/${encodeURIComponent(topic)}`;
-  const cacheKey = `bothq.feed.${server}.${topic}`;
+/**
+ * Poll the private feed. onBatch(messages) gets each successful response, oldest first.
+ * onStatus('offline') on a failed poll, onStatus(null) after a good one.
+ * Returns a stop function. The first request omits since.
+ */
+export function startPrivateFeed({ base, key }, { onBatch, onStatus } = {}) {
+  let lastId = null;
+  let first = true;
+  let timer = 0;
+  let stopped = false;
+
+  const tick = async () => {
+    if (stopped) return;
+    const since = !first && lastId != null ? lastId : null;
+    first = false;
+    const url = since != null ? `${base}/feed?since=${encodeURIComponent(since)}` : `${base}/feed`;
+    try {
+      const res = await fetch(url, { cache: 'no-store', headers: { Authorization: `Bearer ${key}` } });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      const messages = Array.isArray(data?.messages) ? data.messages : [];
+      const tail = messages.length ? messages[messages.length - 1] : null;
+      if (tail && tail.id != null) lastId = String(tail.id);
+      onBatch?.(messages);
+      onStatus?.(null);
+      timer = setTimeout(tick, POLL_OK);
+    } catch {
+      onStatus?.('offline');
+      timer = setTimeout(tick, POLL_ERR);
+    }
+  };
+  tick();
+  return () => { stopped = true; clearTimeout(timer); };
+}
+
+/** Read the private feed into the office state. onStatus('offline' | null) for the small indicator. */
+export function connectFeed({ base, key }, onState, onStatus) {
+  const cacheKey = `bothq.feed.${base}`;
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Sofia';
-  const store = new StateStore({ tz, hasAvatar: (id) => HANDMADE.has(id) });   // others get a generated blob, no 404 probe
-  const cfg = {};                                        // per bot name: { look, chat_url } -> the store's bots config
-  const routines = new Map();                            // bot id -> { name, items }
-  const floorThemes = {};                                // team name -> interior id, from {"floor_themes":{...}}
-  let lines = [], lastId = null, saveTimer = 0;
+  const store = new StateStore({ tz, hasAvatar: (id) => HANDMADE.has(id) });
+  const cfg = {};
+  const routines = new Map();
+  const floorThemes = {};
+  let lines = [];
   const seen = new Set();
+  let saveTimer = 0;
 
   try { lines = JSON.parse(localStorage.getItem(cacheKey)) || []; } catch { lines = []; }
-  try {
-    const text = await (await fetch(`${base}/json?poll=1&since=12h`, { cache: 'no-store' })).text();
-    for (const row of text.split('\n')) if (row) keep(JSON.parse(row));
-  } catch { /* offline: the cache still shows the last known office */ }
-  lines = lines.filter((l) => !seen.has(l.id) && seen.add(l.id)).sort((a, b) => a.time - b.time || (a.id < b.id ? -1 : 1));
+  lines = lines.filter((l) => l && typeof l.id === 'string' && !seen.has(l.id) && seen.add(l.id))
+    .sort((a, b) => a.time - b.time || (a.id < b.id ? -1 : 1));
   for (const l of lines) ingest(l, true);
-  lastId = lines.at(-1)?.id ?? null;
-  save();
-  publish();
+  if (lines.length) publish();
 
-  const live = new EventSource(`${base}/sse`);
-  let opened = false;
-  live.onopen = () => { if (opened) catchUp(); opened = true; };   // after a reconnect, fetch what was missed
-  live.onmessage = (e) => { try { if (take(JSON.parse(e.data))) publish(); } catch { /* keepalive or junk */ } };
+  startPrivateFeed({ base, key }, {
+    onBatch(messages) {
+      let changed = false;
+      for (const m of messages) if (take(m)) changed = true;
+      if (changed) publish();
+    },
+    onStatus,
+  });
   setInterval(() => { const v = store.version, s = store.snapshot(); if (store.version !== v) onState(extras(s)); }, TICK_MS);
 
-  function keep(m) {                                     // a message of the history request, into `lines`
-    if (m?.event === 'message' && typeof m.id === 'string') lines.push({ id: m.id, time: Number(m.time) || 0, message: m.message });
-  }
-  function take(m) {                                     // a live message: new -> ingest; true if the office changed
-    if (m?.event !== 'message' || typeof m.id !== 'string' || seen.has(m.id)) return false;
-    seen.add(m.id);
-    const l = { id: m.id, time: Number(m.time) || Date.now() / 1000, message: m.message };
+  function take(m) {
+    if (m?.event !== 'message' || m.id == null) return false;
+    const id = String(m.id);
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    const l = { id, time: Number(m.time) || Date.now() / 1000, message: m.message };
     lines.push(l);
     if (lines.length > KEEP * 1.5) lines = lines.slice(-KEEP);
-    lastId = l.id;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(save, 2000);
     return ingest(l, false);
-  }
-  async function catchUp() {
-    try {
-      const text = await (await fetch(`${base}/json?poll=1&since=${lastId ?? '12h'}`, { cache: 'no-store' })).text();
-      let changed = false;
-      for (const row of text.split('\n')) if (row && take(JSON.parse(row))) changed = true;
-      if (changed) publish();
-    } catch { /* the stream retries by itself */ }
   }
   function ingest({ message, time }, replay) {
     if (typeof message !== 'string' || message.length > MAX_LINE) return false;
@@ -102,26 +126,26 @@ export async function connectFeed({ topic, server }, onState) {
       store.setBotsConfig(cfg);
       return true;
     }
-    if (isMap(rec.groups)) {                             // {"groups":{"Bot A":"Content"}}: the main bot's teams = floors
+    if (isMap(rec.groups)) {
       for (const [name, team] of Object.entries(rec.groups).slice(0, 400)) {
         if (typeof team === 'string' && team.trim()) (cfg[name] ||= {}).floor = team.trim().slice(0, 40);
       }
       store.setBotsConfig(cfg);
       return true;
     }
-    if (isMap(rec.chat)) {                               // only app deep links and web pages (the store refuses scripts)
+    if (isMap(rec.chat)) {
       for (const [name, url] of Object.entries(rec.chat).slice(0, 400)) {
         if (typeof url === 'string' && /^(grokbot|https):\/\//i.test(url.trim())) (cfg[name] ||= {}).chat_url = url.trim();
       }
       store.setBotsConfig(cfg);
       return true;
     }
-    if (isMap(rec.floor_themes)) {                       // {"floor_themes":{"Ops":"ranch"}} — keys merge; "" or "auto" clears one
+    if (isMap(rec.floor_themes)) {
       for (const [name, id] of Object.entries(rec.floor_themes).slice(0, 40)) {
         if (typeof name !== 'string' || !name.trim()) continue;
-        const key = name.trim().slice(0, 40);
-        if (typeof id !== 'string' || !id.trim() || /^(auto)$/i.test(id.trim())) delete floorThemes[key];
-        else floorThemes[key] = id.trim().toLowerCase().slice(0, 24);
+        const keyName = name.trim().slice(0, 40);
+        if (typeof id !== 'string' || !id.trim() || /^(auto)$/i.test(id.trim())) delete floorThemes[keyName];
+        else floorThemes[keyName] = id.trim().toLowerCase().slice(0, 24);
       }
       return true;
     }
@@ -132,13 +156,13 @@ export async function connectFeed({ topic, server }, onState) {
         routine: String(r.name ?? '').slice(0, 80), schedule: String(r.schedule ?? '').slice(0, 80),
         next_run: Number.isFinite(Date.parse(r.next_run)) ? new Date(r.next_run).toISOString() : null,
       })).filter((r) => r.routine);
-      routines.set(botIdFor(name), { name, items });      // a bot's latest list replaces its previous one
+      routines.set(botIdFor(name), { name, items });
       return true;
     }
     store.apply({ ...rec, t }, { replay });
     return true;
   }
-  function extras(s) {                                   // the panels' data on top of the server-shaped state
+  function extras(s) {
     const since = Date.now() - DAY_MS, finished = [];
     for (let i = lines.length - 1; i >= 0 && finished.length < 100; i--) {
       const l = lines[i];
