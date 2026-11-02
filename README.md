@@ -51,6 +51,17 @@ The free ntfy.sh tier allows 250 messages a day per IP address. Every status cha
 
 For your own server, add `&ntfy=https://your.server` to the dashboard link (`#<topic>&ntfy=https://your.server`), or to the wallpaper link (`?feed=<topic>&ntfy=https://your.server`). Tell the bots to post to that server instead of `https://ntfy.sh`. The server needs HTTPS and must be reachable from both the bots' box and your browser.
 
+### Themes
+
+The office is the default. Nothing in the scene or the cards changes until a theme is selected, and the ntfy topic stays in the hash.
+
+- **This visit:** put `?theme=ranch` in front of the hash. `?theme=office` (or `default`) forces the office.
+  `https://cillroy.github.io/grokbot-wallpaper/web/?theme=ranch#<topic>`
+- **Remembered:** the Theme menu on the right of the top bar (Office or Hill Country) saves the choice in this browser under `bothq.theme`. A link with `?theme=` wins for that visit; with no query, the saved choice is used. An unknown id is ignored.
+- The same query works on the wallpaper: `?mode=wallpaper&theme=ranch#<topic>`. A choice saved on the dashboard applies to the wallpaper on the same origin.
+
+Hill Country is a Central Texas ranch around the tower: limestone and cedar, live oak and mesquite, a tin-roof barn, sunset light. Bots, floors, usage and chat links are unchanged. How a theme is shaped, and how to add one: `docs/THEMES.md`.
+
 ### Troubleshooting
 
 ```sh
