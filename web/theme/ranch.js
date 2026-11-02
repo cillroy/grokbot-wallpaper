@@ -1,4 +1,4 @@
-// Hill Country: a Central Texas ranch around the office tower. Everything here is procedural
+// Texas Hill Country: a Central Texas ranch around the office tower. Everything here is procedural
 // (canvas textures and a few thousand triangles). Nothing is fetched. The office file does not
 // import this module unless ?theme=ranch or the saved choice says so.
 //
@@ -11,7 +11,7 @@ const REDUCE = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-
 
 export const ranchTheme = {
   id: 'ranch',
-  label: 'Hill Country',
+  label: 'Texas Hill Country',
   loading: 'Setting up the ranch…',
   themeColor: '#E36A3C',
   css: new URL('./ranch.css', import.meta.url).href,

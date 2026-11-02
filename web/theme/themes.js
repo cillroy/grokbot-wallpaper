@@ -11,7 +11,7 @@ import { INTERIOR_CHOICES, resolveFloorInterior, writeFloorThemeChoice, readFloo
 const STORAGE_KEY = 'bothq.theme';
 
 export const CATALOG = [
-  { id: 'ranch', label: 'Hill Country' },
+  { id: 'ranch', label: 'Texas Hill Country' },
 ];
 
 const LOADERS = {

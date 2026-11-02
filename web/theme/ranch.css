@@ -1,4 +1,4 @@
-/* Hill Country accents. Status hues stay recognisable; the cards shift to saddle leather and tin.
+/* Texas Hill Country accents. Status hues stay recognisable; the cards shift to saddle leather and tin.
    These win over :root / .bhq-surface because of the data-theme attribute. The office sets neither. */
 
 html[data-theme="ranch"] {

@@ -28,7 +28,7 @@ https://cillroy.github.io/grokbot-wallpaper/web/?mode=wallpaper&theme=ranch#<top
 ```js
 {
   id: 'ranch',                  // ?theme=ranch, also <html data-theme="ranch">
-  label: 'Hill Country',        // menu text, duplicated in CATALOG so the menu does not load the module
+  label: 'Texas Hill Country', // menu text, duplicated in CATALOG so the menu does not load the module
   loading: 'Setting up the ranch…',
   themeColor: '#E36A3C',        // meta theme-color, optional
   css: new URL('./ranch.css', import.meta.url).href,
@@ -55,7 +55,7 @@ Keep a theme's geometry, textures and CSS in its own files under `web/theme/`. N
 
 `landing/assemble.mjs` copies `web/theme/` to `office/theme/` for the assembled site. A new file there is picked up by the existing `js|css` rule.
 
-## Hill Country
+## Texas Hill Country
 
 `web/theme/ranch.js` and `ranch.css`. Limestone tint on the tower shell, a caliche and grass pad, cedar posts with wire, live oaks, mesquite, juniper, prickly pear, a plank barn with a rusty tin roof, a lone star, a longhorn mount and a horseshoe, a windmill, a water tank, and a Texas flag on a pole (blue hoist with a white star, white over red, 2:3). The light is a fixed golden hour. Cards shift to saddle leather; status colours stay distinct. Fraunces is loaded only for this theme. The open floors are not tinted here: that is an interior theme, so a floor can stay a plain office inside a ranch exterior.
 

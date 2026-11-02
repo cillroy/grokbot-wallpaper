@@ -57,10 +57,10 @@ The office is the default. Nothing in the scene or the cards changes until a the
 
 - **This visit:** put `?theme=ranch` in front of the hash. `?theme=office` (or `default`) forces the office.
   `https://cillroy.github.io/grokbot-wallpaper/web/?theme=ranch#<topic>`
-- **Remembered:** the Theme menu on the right of the top bar (Office or Hill Country) saves the choice in this browser under `bothq.theme`. A link with `?theme=` wins for that visit; with no query, the saved choice is used. An unknown id is ignored.
+- **Remembered:** the Theme menu on the right of the top bar (Office or Texas Hill Country) saves the choice in this browser under `bothq.theme`. A link with `?theme=` wins for that visit; with no query, the saved choice is used. An unknown id is ignored.
 - The same query works on the wallpaper: `?mode=wallpaper&theme=ranch#<topic>`. A choice saved on the dashboard applies to the wallpaper on the same origin.
 
-Hill Country is a Central Texas ranch around the tower: limestone and cedar, live oak and mesquite, a tin-roof barn, sunset light. Bots, floors, usage and chat links are unchanged. How a theme is shaped, and how to add one: `docs/THEMES.md`.
+Texas Hill Country is a Central Texas ranch around the tower: limestone and cedar, live oak and mesquite, a tin-roof barn, sunset light. Bots, floors, usage and chat links are unchanged. How a theme is shaped, and how to add one: `docs/THEMES.md`.
 
 Each floor can also wear its own interior. The Theme menu has a select per floor (saved in this browser). A feed message can set them too, and the saved choice wins:
 
