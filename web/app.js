@@ -3,7 +3,7 @@
 // Without either (static preview) it runs on web/data/demo-state.json with a local simulation.
 import { initScene, renderScene, zoom, focusBot } from './scene/scene.js';
 import { initSound, sfx } from './audio/sound.js';
-import { bootTheme, mountThemePicker } from './theme/themes.js';
+import { bootTheme, mountThemePicker, onFloorThemesChanged, syncFloorThemeMenu, paintFloorAccents } from './theme/themes.js';
 
 const POLL_MS = 1000;
 const view = { currentFloor: null, selectedBot: null };
@@ -43,6 +43,7 @@ ui.initUI({
 if (!WALLPAPER) {
   initSound({ slot: document.querySelector('#topbar .bhq-right') });
   mountThemePicker(document.querySelector('#topbar .bhq-right'));
+  onFloorThemesChanged(() => render());
 }
 
 addEventListener('keydown', (e) => { if (e.key === 'Escape') select(null); });
@@ -103,6 +104,10 @@ function render() {
   if (view.selectedBot && !state.bots[view.selectedBot]) view.selectedBot = null;
   renderScene(state, view);
   ui.renderUI(state, view);
+  if (!WALLPAPER) {
+    syncFloorThemeMenu(state.floors || []);
+    paintFloorAccents(state, view.currentFloor);
+  }
   if (!WALLPAPER) soundStatusChanges();
 }
 

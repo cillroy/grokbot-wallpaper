@@ -62,6 +62,14 @@ The office is the default. Nothing in the scene or the cards changes until a the
 
 Hill Country is a Central Texas ranch around the tower: limestone and cedar, live oak and mesquite, a tin-roof barn, sunset light. Bots, floors, usage and chat links are unchanged. How a theme is shaped, and how to add one: `docs/THEMES.md`.
 
+Each floor can also wear its own interior. The Theme menu has a select per floor (saved in this browser). A feed message can set them too, and the saved choice wins:
+
+```json
+{"floor_themes":{"Ops":"ranch","Design":"coffee"}}
+```
+
+Teams named Design, Dev, Content, Privacy, Home, and Ops pick a coffee bar, an arcade, a studio, a vault, a build site, and a bunkhouse when nobody has chosen. Any other name follows the building theme. Details and the default map: `docs/THEMES.md`.
+
 ### Troubleshooting
 
 ```sh

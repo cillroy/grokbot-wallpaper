@@ -57,4 +57,39 @@ Keep a theme's geometry, textures and CSS in its own files under `web/theme/`. N
 
 ## Hill Country
 
-`web/theme/ranch.js` and `ranch.css`. Limestone tint on the tower, a caliche and grass pad, cedar posts with wire, live oaks, mesquite, juniper, prickly pear, a plank barn with a rusty tin roof, a lone star, a longhorn mount and a horseshoe, a windmill and a water tank. The light is a fixed golden hour. Cards shift to saddle leather; status colours stay distinct. Fraunces is loaded only for this theme.
+`web/theme/ranch.js` and `ranch.css`. Limestone tint on the tower shell, a caliche and grass pad, cedar posts with wire, live oaks, mesquite, juniper, prickly pear, a plank barn with a rusty tin roof, a lone star, a longhorn mount and a horseshoe, a windmill and a water tank. The light is a fixed golden hour. Cards shift to saddle leather; status colours stay distinct. Fraunces is loaded only for this theme. The open floors are not tinted here: that is an interior theme, so a floor can stay a plain office inside a ranch exterior.
+
+## Floor interiors
+
+The exterior (sky, light, ground, scenery, and the closed shell of the tower) is still the one theme above. Each floor can dress its own interior: floor and wall tint, furniture colour, a few procedural props, the glass band of that floor when it is closed, and an accent on that floor's button and team card.
+
+Floors with no setting follow the exterior. Unknown team names do the same, so a ranch exterior still tints every unnamed floor and today's look is unchanged. A known team name picks an interior even when the exterior is the office.
+
+### Default map
+
+This table is `DEFAULT_FLOOR_THEMES` in `web/theme/interiors.js`. Match is case-insensitive on the floor name (the team name from the feed).
+
+| Floor name | Interior | What you see |
+|---|---|---|
+| Design | `coffee` | Coffee bar: chalk menu, espresso machine, cups, warm wood |
+| Dev | `arcade` | Arcade: two neon cabinets, pixel screens, a joystick |
+| Content | `studio` | Studio: ring light, camera, mic, posters |
+| Privacy | `vault` | Vault: safe door, filing cabinets, shredder, dim metals |
+| Home | `casita` | Build site: sawhorses, lumber, blueprint, hard hats |
+| Ops | `ranch` | Bunkhouse: saddle, lasso, wanted poster |
+
+### What wins
+
+For each floor, first hit wins:
+
+1. **This browser**, `localStorage` key `bothq.floorThemes`, a map of floor name → interior id. The Theme menu writes it. `office` forces the plain interior. An empty value (Auto) removes the key.
+2. **The feed**, a message `{"floor_themes":{"Ops":"ranch"}}`. Keys merge across messages; `"auto"` or `""` clears one key. A saved choice for that floor wins over the feed. The topic stays in the hash. See `docs/CONTRACT.md`.
+3. **The default map** above.
+4. **The exterior theme**, when its id is also an interior (`ranch`).
+5. **The plain office.**
+
+An unknown id is ignored and the next step runs.
+
+The menu is the Theme button in the top bar: Building reloads the page (the sky and the shell change), each floor's select does not. Wallpaper mode has no menu; it still applies the saved choices, the feed, and the default map.
+
+Adding an interior is a module under `web/theme/interiors/` plus a row in `interiors.js`. It exports `{ id, label, accent, ink, glass, tint, createProps }`. `tint` is `{ floor, wall, wood, metal, fabric, glass }` and recolors that floor's own materials. `createProps()` returns a cloneable group parked at the back-right of the room, clear of the desks and the left-wall screens. Props stay on layer 0. Do not add lights or per-frame work.

@@ -323,3 +323,18 @@ Product rule from v2 made concrete: any user's bots get a blob without Blender.
 - **Review page:** `web/scene/blobgen.html` (served at `/scene/blobgen.html`): every shape x colour, accessories, the
   hash fallback, the 15 demo bots (hand-made GLB next to the generated one, looks in `web/data/demo-looks.json`),
   an office-scale strip and a self-test (triangle budget, GLB structure, determinism).
+
+## Floor interiors (ntfy dashboard)
+
+The exterior of the tower is one theme for the whole building (`docs/THEMES.md`). Each floor can wear its own interior. On the ntfy dashboard (`web/feed.js`) a message may set them:
+
+```json
+{"floor_themes":{"Ops":"ranch","Design":"coffee"}}
+```
+
+- Keys are floor names (the team names), matched case-insensitively. Values are interior ids: `coffee`, `arcade`, `studio`, `vault`, `casita`, `ranch`, or `office` for the plain interior.
+- Messages merge. A later message updates only the keys it contains. `"auto"` or `""` clears that key.
+- An unknown id is ignored.
+- A choice saved in the browser (`localStorage` `bothq.floorThemes`) wins over the feed for that floor.
+- With no feed key and no saved choice, the team names Ops, Privacy, Home, Content, Design, and Dev pick the interiors in `docs/THEMES.md`. Any other name follows the exterior theme.
+- The ntfy topic stays in the URL hash. This message is not sent anywhere but the channel the page already reads.

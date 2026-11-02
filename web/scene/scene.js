@@ -10,6 +10,7 @@ import { createDaylight } from './daylight.js';
 import { createPost } from './post.js';
 import { studioCss } from './studio.js';
 import { activeTheme } from '../theme/themes.js';
+import { dressBuilding } from '../theme/dress.js';
 import { Actor } from './actor.js';
 import { generateBlob } from './blobgen.js';
 import { Spring, clamp } from './spring.js';
@@ -189,6 +190,7 @@ function sync() {
     if ((bot.effective_status || bot.status) === 'working' && !lounge.has(bot.id)) flags[deskIdx] = 1;
     actor.update(bot, lounge.get(bot.id) || desk, { maxShare, selectedBot: view.selectedBot });
   }
+  dressBuilding(building, state, activeTheme()?.id || null);
   building.setScreens(flags);
   const floor = floors.find((f) => f.id === building.activeId);
   building.setDisplayData({ floorName: floor ? floor.name : '', bots: floorBots, hour: sofiaHour(state.now) });
