@@ -155,6 +155,8 @@ export class StateStore {
     this.schedules = new Map();  // bot id -> Map(routine -> entry)
     this.floorsCfg = normFloorsCfg(null);
     this.botsCfg = normBotsCfg(null);
+    // null = no roster message yet (draw every bot that posts). A Set of bot ids = only those names.
+    this.roster = null;
     this.meta = { parse_errors: 0, too_long: 0, lines: 0, events: 0, usage_lines: 0, skipped: 0, stale: 0, started_at: this.time.iso(this.now()) };
 
     this.cache = null;
@@ -171,6 +173,57 @@ export class StateStore {
   setBotsConfig(obj) {
     this.botsCfg = normBotsCfg(obj);
     this.reassignAll();
+    this.dirty = true;
+  }
+
+  /**
+   * Latest `{"roster":[…]}` message. Replaces the allowlist. Names not on it are dropped from the office
+   * (no desk, no floor). Pass null to clear the filter (legacy: every status creates a bot again).
+   * @param {string[]|null} names
+   * @param {object} [opts]
+   * @param {string} [opts.t] ISO time for the idle roster rows
+   * @param {boolean} [opts.replay]
+   */
+  setRoster(names, { t = null, replay = false } = {}) {
+    if (names == null) {
+      if (this.roster === null) return;
+      this.roster = null;
+      this.dirty = true;
+      return;
+    }
+    const list = Array.isArray(names) ? names : [];
+    const next = new Set();
+    const ordered = [];
+    for (const raw of list.slice(0, LIMITS.MAX_BOTS)) {
+      if (typeof raw !== 'string' || !raw.trim()) continue;
+      const name = cleanStr(raw, 80);
+      if (!name) continue;
+      const id = botIdFor(name);
+      if (next.has(id)) continue;
+      next.add(id);
+      ordered.push({ id, name });
+    }
+    this.roster = next;
+
+    for (const [id, bot] of [...this.bots]) {
+      if (next.has(id)) continue;
+      if (bot.assign) this.members.get(bot.assign.floor)?.delete(bot.assign.desk);
+      this.bots.delete(id);
+    }
+    this.feed = this.feed.filter((f) => next.has(f.id));
+    this.schedules.forEach((_, id) => { if (!next.has(id)) this.schedules.delete(id); });
+
+    const at = t || this.time.iso(this.now());
+    for (const { id, name } of ordered) {
+      if (this.bots.has(id)) continue;
+      this.apply({ t: at, bot: name, status: 'idle', step: '' }, { replay });
+    }
+    for (const fid of [...this.members.keys()]) {
+      if (!this.members.get(fid)?.size) {
+        this.members.delete(fid);
+        this.floorReg.delete(fid);
+      }
+    }
     this.dirty = true;
   }
 
@@ -194,6 +247,7 @@ export class StateStore {
     const name = cleanStr(rec.bot, 80);
     if (!name) { this.meta.skipped++; return; }
     const id = botIdFor(name);
+    if (this.roster && !this.roster.has(id)) { this.meta.skipped++; return; }
     let bot = this.bots.get(id);
     if (!bot) {
       if (this.bots.size >= LIMITS.MAX_BOTS) { this.meta.skipped++; return; }

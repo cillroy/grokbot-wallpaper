@@ -357,3 +357,30 @@ test('look: the server vocabulary matches the one the browser uses', () => {
   assert.equal(SHAPES.length, 12);
   for (const sh of SHAPES) assert.equal(normLook({ shape: sh }).shape, sh);
 });
+
+test('roster: until set, every status draws; after set, only listed bots get a desk', () => {
+  const { store, ev } = make();
+  ev('Stranger', 'working', 'x');
+  ev('X Writer', 'working', 'y');
+  assert.ok(store.snapshot().bots.stranger);
+  assert.ok(store.snapshot().bots['x-writer']);
+
+  store.setRoster(['X Writer', 'Research Bot']);
+  store.commit();
+  let st = store.snapshot();
+  assert.equal(st.bots.stranger, undefined, 'name not on the roster is removed');
+  assert.equal(st.bots['x-writer'].status, 'working');
+  assert.equal(st.bots['research-bot'].effective_status, 'idle', 'quiet roster bot still appears');
+  assert.equal(st.floors.every((f) => f.bots.every((id) => st.bots[id])), true);
+
+  ev('Stranger', 'waiting_user', 'need you');
+  assert.equal(store.snapshot().bots.stranger, undefined, 'status outside the roster is ignored');
+  assert.ok(store.meta.skipped > 0);
+
+  store.setRoster(['Research Bot']);
+  store.commit();
+  st = store.snapshot();
+  assert.equal(st.bots['x-writer'], undefined);
+  assert.ok(st.bots['research-bot']);
+  assert.equal(Object.keys(st.bots).length, 1);
+});

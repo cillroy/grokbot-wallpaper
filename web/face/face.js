@@ -617,13 +617,19 @@ function botId(name) {
     .replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/g, '');
   return SLUG_ALIASES[s] || s || `bot-${hash(String(name)).toString(36)}`;
 }
+let roster = null;                                       // null until a roster message; then only those ids are drawn
 function applyLine(text, time) {                         // a status, roster, looks or usage line; false if none
   if (typeof text !== 'string' || text.length > 4096) return false;
   let ev;
   try { ev = JSON.parse(text); } catch { return false; }
   const at = new Date((Number(time) || Date.now() / 1000) * 1000).toISOString();
   if (ev?.looks && typeof ev.looks === 'object' && !Array.isArray(ev.looks)) {   // how each bot looks: its avatar
-    for (const [name, look] of Object.entries(ev.looks).slice(0, 400)) if (look && typeof look === 'object') looks[botId(name)] = look;
+    for (const [name, look] of Object.entries(ev.looks).slice(0, 400)) {
+      if (!look || typeof look !== 'object') continue;
+      const id = botId(name);
+      if (roster && !roster.has(id)) continue;
+      looks[id] = look;
+    }
     crew = '';                                           // rebuild the avatars
     return true;
   }
@@ -631,16 +637,28 @@ function applyLine(text, time) {                         // a status, roster, lo
     if (Number.isFinite(Number(ev.total_used_pct))) state.usage = { total_used_pct: Number(ev.total_used_pct) };
     return true;
   }
-  if (Array.isArray(ev?.roster)) {                       // {"roster":[names]}: every bot shows up, resting until it posts
+  if (Array.isArray(ev?.roster)) {                       // latest roster is the allowlist; without one, every status still draws
+    const next = new Set();
+    const bots = {};
     for (const raw of ev.roster.slice(0, 200)) {
       const name = String(raw ?? '').trim().slice(0, 60), id = name && botId(name);
-      if (id && !state.bots[id]) state.bots[id] = { id, name, step: '', status: 'idle', effective_status: 'idle', last_event: at };
+      if (!id || next.has(id)) continue;
+      next.add(id);
+      const prev = state.bots?.[id];
+      bots[id] = prev
+        ? { ...prev, name }
+        : { id, name, step: '', status: 'idle', effective_status: 'idle', last_event: at };
     }
+    roster = next;
+    state.bots = bots;
+    crew = '';
     return true;
   }
   const name = String(ev?.bot ?? '').trim().slice(0, 60);
   if (!name) return false;
-  const id = botId(name), b = state.bots[id] || (state.bots[id] = { id, name });
+  const id = botId(name);
+  if (roster && !roster.has(id)) return false;           // not on the latest roster: ignore
+  const b = state.bots[id] || (state.bots[id] = { id, name });
   const word = String(ev.status ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   b.name = name;
   b.step = String(ev.step ?? '').slice(0, 80);

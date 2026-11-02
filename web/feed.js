@@ -9,7 +9,8 @@
 //
 // Lines (one JSON object per message, at most 4 KB, anything else is dropped):
 //   {"bot":"…","status":"working|idle|waiting_user|error|done","step":"…"}     a status change
-//   {"roster":["Bot A","Bot B"]}                                                every bot appears, idle until it posts
+//   {"roster":["Bot A","Bot B"]}                                                allowlist: only these bots are drawn
+//     (latest roster wins; with no roster message yet, every status still creates a bot as before)
 //   {"looks":{"Bot A":{"shape":"sphere","color":"#RRGGBB","accessory":"none"}}} how each bot's blob looks
 //   {"type":"usage","total_used_pct":37,"resets_at":"…","bots":{"Bot A":4.1}}  the weekly limit meter
 //   {"groups":{"Bot A":"Personal","Bot B":"Home IT"}}                         sidebar sections, one floor each
@@ -127,26 +128,31 @@ export function connectFeed({ base, key }, onState, onStatus) {
     if (!rec || typeof rec !== 'object' || Array.isArray(rec)) return false;
     const t = typeof rec.t === 'string' ? rec.t : new Date(time * 1000).toISOString();
     if (Array.isArray(rec.roster)) {
-      for (const name of rec.roster.slice(0, 400)) {
-        if (typeof name === 'string' && name.trim() && !store.bots.has(botIdFor(name))) store.apply({ t, bot: name, status: 'idle', step: '' }, { replay });
-      }
+      store.setRoster(rec.roster, { t, replay });
       return true;
     }
     if (isMap(rec.looks)) {
-      for (const [name, look] of Object.entries(rec.looks).slice(0, 400)) (cfg[name] ||= {}).look = look;
+      for (const [name, look] of Object.entries(rec.looks).slice(0, 400)) {
+        if (store.roster && !store.roster.has(botIdFor(name))) continue;
+        (cfg[name] ||= {}).look = look;
+      }
       store.setBotsConfig(cfg);
       return true;
     }
     if (isMap(rec.groups)) {                             // {"groups":{"Bot A":"Personal"}}: each label is one floor, used as written
       for (const [name, team] of Object.entries(rec.groups).slice(0, 400)) {
-        if (typeof team === 'string' && team.trim()) (cfg[name] ||= {}).floor = team.trim().slice(0, 40);
+        if (typeof team !== 'string' || !team.trim()) continue;
+        if (store.roster && !store.roster.has(botIdFor(name))) continue;
+        (cfg[name] ||= {}).floor = team.trim().slice(0, 40);
       }
       store.setBotsConfig(cfg);
       return true;
     }
     if (isMap(rec.chat)) {
       for (const [name, url] of Object.entries(rec.chat).slice(0, 400)) {
-        if (typeof url === 'string' && /^(grokbot|https):\/\//i.test(url.trim())) (cfg[name] ||= {}).chat_url = url.trim();
+        if (typeof url !== 'string' || !/^(grokbot|https):\/\//i.test(url.trim())) continue;
+        if (store.roster && !store.roster.has(botIdFor(name))) continue;
+        (cfg[name] ||= {}).chat_url = url.trim();
       }
       store.setBotsConfig(cfg);
       return true;
@@ -163,11 +169,13 @@ export function connectFeed({ base, key }, onState, onStatus) {
     if (isMap(rec.routines)) {
       const name = typeof rec.routines.bot === 'string' ? rec.routines.bot.trim().slice(0, 80) : '';
       if (!name || !Array.isArray(rec.routines.items)) return false;
+      const id = botIdFor(name);
+      if (store.roster && !store.roster.has(id)) return false;
       const items = rec.routines.items.slice(0, 50).filter(isMap).map((r) => ({
         routine: String(r.name ?? '').slice(0, 80), schedule: String(r.schedule ?? '').slice(0, 80),
         next_run: Number.isFinite(Date.parse(r.next_run)) ? new Date(r.next_run).toISOString() : null,
       })).filter((r) => r.routine);
-      routines.set(botIdFor(name), { name, items });
+      routines.set(id, { name, items });
       return true;
     }
     store.apply({ ...rec, t }, { replay });
@@ -175,6 +183,7 @@ export function connectFeed({ base, key }, onState, onStatus) {
   }
   function extras(s) {
     const since = Date.now() - DAY_MS, finished = [];
+    const allow = store.roster;
     for (let i = lines.length - 1; i >= 0 && finished.length < 100; i--) {
       const l = lines[i];
       if (l.time * 1000 < since) break;
@@ -182,12 +191,16 @@ export function connectFeed({ base, key }, onState, onStatus) {
       let rec;
       try { rec = JSON.parse(l.message); } catch { continue; }
       if (rec?.status !== 'done' || typeof rec.bot !== 'string') continue;
-      finished.push({ t: typeof rec.t === 'string' ? rec.t : new Date(l.time * 1000).toISOString(), bot: botIdFor(rec.bot), name: rec.bot.slice(0, 80), step: String(rec.step ?? '').slice(0, 80) });
+      const id = botIdFor(rec.bot);
+      if (allow && !allow.has(id)) continue;
+      finished.push({ t: typeof rec.t === 'string' ? rec.t : new Date(l.time * 1000).toISOString(), bot: id, name: rec.bot.slice(0, 80), step: String(rec.step ?? '').slice(0, 80) });
     }
     s.floor_themes = { ...floorThemes };
     s.finished = finished;
-    s.routines = [...routines].flatMap(([bot, { name, items }]) => items.map((r) => ({ bot, name, ...r })))
-      .sort((a, b) => (a.next_run ? Date.parse(a.next_run) : Infinity) - (b.next_run ? Date.parse(b.next_run) : Infinity));
+    s.routines = [...routines].flatMap(([bot, { name, items }]) => {
+      if (allow && !allow.has(bot)) return [];
+      return items.map((r) => ({ bot, name, ...r }));
+    }).sort((a, b) => (a.next_run ? Date.parse(a.next_run) : Infinity) - (b.next_run ? Date.parse(b.next_run) : Infinity));
     return s;
   }
   function publish() { store.commit(); onState(extras(store.snapshot())); }
