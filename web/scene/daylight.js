@@ -106,6 +106,8 @@ export function createDaylight({ scene, renderer }) {
   const uNight = { value: 0 };
   const state = { night: 0, lampsK: 0, windowsK: 0, phase: 'day', minutes: 720, params: null };
   let override = null;                            // minutes (?time= / setTime), or null = the fixed studio noon
+  let themeLook = null;                          // a theme's fixed light; ignored while ?time= is set, null for the office
+  let themePhase = null;
   let cur = null;
   let lampSource = null;                          // () => { positions: Vector3[], k: number }
   let lastHtml = -1e9;
@@ -123,6 +125,19 @@ export function createDaylight({ scene, renderer }) {
 
   function setTime(value) {
     override = value && value !== 'auto' ? parseClock(value) : null;
+    lastHtml = -1e9;
+  }
+
+  // Fixed light for a theme (hex strings or the same arrays paramsAt returns). ?time= still drives the clock.
+  function setLook(look, opts = {}) {
+    if (!look) { themeLook = null; themePhase = null; }
+    else {
+      const p = {};
+      for (const k of Object.keys(look)) p[k] = typeof look[k] === 'string' ? rgb(look[k]) : look[k];
+      themeLook = p;
+      themePhase = opts.phase || null;
+    }
+    cur = null;
     lastHtml = -1e9;
   }
 
@@ -163,14 +178,15 @@ export function createDaylight({ scene, renderer }) {
   function update(dt, nowMs) {
     clockMs = nowMs;
     const minutes = nowMinutes();
-    const target = paramsAt(minutes);
+    const useTheme = themeLook && override === null;
+    const target = useTheme ? themeLook : paramsAt(minutes);
     if (!cur) cur = target;
     else {
       const k = 1 - Math.exp(-dt / 0.45);        // never jump: follow the clock with a soft lag
       cur = mixParams(cur, target, k);
     }
     state.minutes = minutes;
-    state.phase = phaseAt(minutes);
+    state.phase = useTheme && themePhase ? themePhase : phaseAt(minutes);
     state.params = cur;
     apply(cur, dt);
     updateLamps();
@@ -184,7 +200,7 @@ export function createDaylight({ scene, renderer }) {
   }
 
   const api = {
-    uNight, state, update, setTime,
+    uNight, state, update, setTime, setLook,
     track(mat, kind) { tracked.set(mat, kind); },
     untrack(mat) { tracked.delete(mat); },
     setLampSource(fn) { lampSource = fn; },

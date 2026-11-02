@@ -3,6 +3,7 @@
 // Without either (static preview) it runs on web/data/demo-state.json with a local simulation.
 import { initScene, renderScene, zoom, focusBot } from './scene/scene.js';
 import { initSound, sfx } from './audio/sound.js';
+import { bootTheme, mountThemePicker } from './theme/themes.js';
 
 const POLL_MS = 1000;
 const view = { currentFloor: null, selectedBot: null };
@@ -16,6 +17,9 @@ let demoTimer = null;
 const params = new URLSearchParams(location.search);
 const WALLPAPER = params.get('mode') === 'wallpaper';
 if (WALLPAPER) document.documentElement.classList.add('wallpaper');
+
+// Theme is ?theme= and localStorage (web/theme/). It must stay out of the hash: the hash is only the ntfy topic.
+await bootTheme();
 
 try {
   ui = await import(WALLPAPER ? './wallpaper.js' : './ui/ui.js');
@@ -36,7 +40,10 @@ ui.initUI({
 });
 
 // music and sound effects (not on the wallpaper): the speaker button sits in the top bar's right group
-if (!WALLPAPER) initSound({ slot: document.querySelector('#topbar .bhq-right') });
+if (!WALLPAPER) {
+  initSound({ slot: document.querySelector('#topbar .bhq-right') });
+  mountThemePicker(document.querySelector('#topbar .bhq-right'));
+}
 
 addEventListener('keydown', (e) => { if (e.key === 'Escape') select(null); });
 
