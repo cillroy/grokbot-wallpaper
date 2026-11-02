@@ -1,6 +1,7 @@
 // Ops floor: a bunkhouse. Saddle, lasso, a wanted poster. The outside ranch theme is separate.
 import * as THREE from 'three';
 import { box, cachedProps, canvasTex, cluster, cyl, mat, sign } from '../kit.js';
+import { hungTexasFlag } from '../texas-flag.js';
 
 const tint = {
   floor: '#D7B07A', wall: '#E7D7BE', wood: '#C6A67C', metal: '#3C2E28', fabric: '#E4CDB4', glass: '#E4D0B4',
@@ -56,6 +57,9 @@ function build() {
   const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 1.15), sign(wanted()));
   poster.position.set(1.15, 1.45, 0.2);
   g.add(poster);
+  const hung = hungTexasFlag(0.4);
+  hung.position.set(-1.7, 1.42, 0.16);
+  g.add(hung);
   cyl(g, wood, 0.26, 0.28, 0.62, 1.2, 0.31, 0.7, 10);
   return g;
 }

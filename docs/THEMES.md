@@ -57,7 +57,7 @@ Keep a theme's geometry, textures and CSS in its own files under `web/theme/`. N
 
 ## Hill Country
 
-`web/theme/ranch.js` and `ranch.css`. Limestone tint on the tower shell, a caliche and grass pad, cedar posts with wire, live oaks, mesquite, juniper, prickly pear, a plank barn with a rusty tin roof, a lone star, a longhorn mount and a horseshoe, a windmill and a water tank. The light is a fixed golden hour. Cards shift to saddle leather; status colours stay distinct. Fraunces is loaded only for this theme. The open floors are not tinted here: that is an interior theme, so a floor can stay a plain office inside a ranch exterior.
+`web/theme/ranch.js` and `ranch.css`. Limestone tint on the tower shell, a caliche and grass pad, cedar posts with wire, live oaks, mesquite, juniper, prickly pear, a plank barn with a rusty tin roof, a lone star, a longhorn mount and a horseshoe, a windmill, a water tank, and a Texas flag on a pole (blue hoist with a white star, white over red, 2:3). The light is a fixed golden hour. Cards shift to saddle leather; status colours stay distinct. Fraunces is loaded only for this theme. The open floors are not tinted here: that is an interior theme, so a floor can stay a plain office inside a ranch exterior.
 
 ## Floor interiors
 
@@ -76,7 +76,7 @@ This table is `DEFAULT_FLOOR_THEMES` in `web/theme/interiors.js`. Match is case-
 | Content | `studio` | Studio: ring light, camera, mic, posters |
 | Privacy | `vault` | Vault: safe door, filing cabinets, shredder, dim metals |
 | Home | `casita` | Build site: sawhorses, lumber, blueprint, hard hats |
-| Ops | `ranch` | Bunkhouse: saddle, lasso, wanted poster |
+| Ops | `ranch` | Bunkhouse: saddle, lasso, wanted poster, a small Texas flag on the wall |
 
 ### What wins
 
