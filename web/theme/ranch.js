@@ -162,9 +162,11 @@ function mountRanch({ scene }) {
   tank.scale.setScalar(0.85);
   root.add(tank);
 
-  // Left of the tower, fly toward the camera so the obverse (blue at the hoist) reads.
+  // Foreground, in front of the near face (the whole cloth stays past z = 6.2) and left
+  // of center, clear of the slab and of the left-hand panels. Upper floors sit behind it.
+  // rotation.y = π/4 keeps the obverse toward the iso camera.
   const flagpole = texasFlagpole({ poleHeight: 5.6, fly: 2.05 });
-  flagpole.position.set(-9.6, 0, 0.4);
+  flagpole.position.set(-0.8, 0, 7.5);
   flagpole.rotation.y = Math.PI / 4;
   root.add(flagpole);
 
