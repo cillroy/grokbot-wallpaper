@@ -5,6 +5,7 @@
 // Scenery sits on layer 1. The studio aura pass only sees layer 0, so the sunset shadow stays
 // the building's. Lights get layer 1 enabled here; layer 0 is left on, so the tower is lit as before.
 import * as THREE from 'three';
+import { texasFlagpole } from './texas-flag.js';
 
 const REDUCE = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -161,6 +162,12 @@ function mountRanch({ scene }) {
   tank.scale.setScalar(0.85);
   root.add(tank);
 
+  // Left of the tower, fly toward the camera so the obverse (blue at the hoist) reads.
+  const flagpole = texasFlagpole({ poleHeight: 5.6, fly: 2.05 });
+  flagpole.position.set(-9.6, 0, 0.4);
+  flagpole.rotation.y = Math.PI / 4;
+  root.add(flagpole);
+
   root.traverse((o) => { o.layers.set(1); o.castShadow = false; o.receiveShadow = false; });
   scene.add(root);
   scene.traverse((o) => { if (o.isLight) o.layers.enable(1); });
@@ -172,6 +179,7 @@ function mountRanch({ scene }) {
       t += dt;
       mill.blades.rotation.z = t * 0.45;
       for (const c of sway) c.rotation.y = Math.sin(t * 0.45 + c.userData.phase) * 0.035;
+      if (flagpole.userData.pivot) flagpole.userData.pivot.rotation.y = Math.sin(t * 0.9) * 0.12;
     },
     dispose() {
       root.removeFromParent();
