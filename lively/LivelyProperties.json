@@ -8,6 +8,6 @@
   "feed": {
     "type": "textbox",
     "value": "",
-    "text": "Your bots channel"
+    "text": "Feed link (#feed=&key=)"
   }
 }

@@ -36,8 +36,7 @@ so the eyes follow the cursor over open windows too. (A fresh Lively has both on
 
 In the Lively library, right-click Grok Bot → **Customise Wallpaper**:
 - **Bot color**: White or Black. Lively sends it to the page at once and keeps it after a reload.
-- **Your bots channel**: your bots' ntfy.sh channel; the wallpaper then shows your bots instead of the demo.
-  The channel name works like a password: do not post it.
+- **Your bots channel**: paste `#feed=<urlencoded base>&key=<read key>` (or the same text without the leading `#`). The wallpaper then shows your bots instead of the demo. The read key works like a password: do not post it.
 
 ## Several monitors
 

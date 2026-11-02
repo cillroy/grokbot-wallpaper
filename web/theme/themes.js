@@ -1,7 +1,7 @@
 // Theme registry. The built-in office is not a theme: it is what runs when nothing is selected, and none of
 // the hooks below run, so its pixels stay put. A theme is a module (see ranch.js) plus one CATALOG row.
 //
-// The ntfy topic stays in the URL hash. A theme never goes there.
+// The feed link stays in the URL hash. A theme never goes there.
 //   ?theme=<id>                  this visit. ?theme=office or ?theme=default forces the office.
 //   localStorage bothq.theme     used when the query is absent. The picker writes it.
 // An unknown id is ignored. ?time= still wins over a theme's fixed light (daylight.js).
@@ -101,7 +101,7 @@ export function mountThemePicker(slot) {
   button.className = 'bhq-theme bhq-surface bhq-theme-btn';
   button.setAttribute('aria-haspopup', 'dialog');
   button.setAttribute('aria-expanded', 'false');
-  button.title = 'Theme. The #topic in the link stays the ntfy channel.';
+  button.title = 'Theme. The feed address stays in the link after #.';
   button.textContent = exteriorLabel(cur);
   const chev = document.createElement('i');
   chev.className = 'bhq-theme-chev';

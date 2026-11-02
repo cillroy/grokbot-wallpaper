@@ -1,10 +1,10 @@
 # Themes
 
-The dashboard's default is the office: white studio light, the building as shipped, graphite cards. That path runs when no theme is selected. A theme is an optional dress on top of it. Bots, floors, usage, chat links and the ntfy hash are not part of a theme.
+The dashboard's default is the office: white studio light, the building as shipped, graphite cards. That path runs when no theme is selected. A theme is an optional dress on top of it. Bots, floors, usage, chat links and the feed fragment are not part of a theme.
 
 ## Choosing one
 
-The topic stays in the fragment (`#<topic>`, or `#<topic>&ntfy=<server>`). A theme never moves into the hash.
+The feed link stays in the fragment (`#feed=<urlencoded base>&key=<read key>`). A theme never moves into the hash. `?theme=` stays in the query.
 
 | Source | When it wins |
 |---|---|
@@ -17,8 +17,8 @@ The topic stays in the fragment (`#<topic>`, or `#<topic>&ntfy=<server>`). A the
 Examples:
 
 ```text
-https://cillroy.github.io/grokbot-wallpaper/web/?theme=ranch#<topic>
-https://cillroy.github.io/grokbot-wallpaper/web/?mode=wallpaper&theme=ranch#<topic>
+https://cillroy.github.io/grokbot-wallpaper/web/?theme=ranch#feed=<urlencoded base>&key=<read key>
+https://cillroy.github.io/grokbot-wallpaper/web/?mode=wallpaper&theme=ranch#feed=<urlencoded base>&key=<read key>
 ```
 
 ## Shape of a theme
@@ -51,7 +51,7 @@ Every field is optional. Hooks that are absent are not called.
 
 `restyle` sees the template roots (`floor_open`, `floor_closed`, `roof`, `elevator_shaft`, `elevator_cabin`) after the glTF materials are prepared. Tinting `material.color` on a baked lightmap multiplies it. Wall screens replace their material later, so task text is left alone. Blobs are not in the templates.
 
-Keep a theme's geometry, textures and CSS in its own files under `web/theme/`. No copyrighted images. No new hosts: three.js stays on jsDelivr, fonts on Google Fonts, the feed on ntfy. Procedural geometry is enough, and it should stay cheap enough to sit behind a wallpaper (instancing, shared materials, no per-frame texture work).
+Keep a theme's geometry, textures and CSS in its own files under `web/theme/`. No copyrighted images. No new hosts: three.js stays on jsDelivr, fonts on Google Fonts, and bot data stays on the private feed you already configured. Procedural geometry is enough, and it should stay cheap enough to sit behind a wallpaper (instancing, shared materials, no per-frame texture work).
 
 `landing/assemble.mjs` copies `web/theme/` to `office/theme/` for the assembled site. A new file there is picked up by the existing `js|css` rule.
 
@@ -92,7 +92,7 @@ A name that matches nothing follows the exterior theme. On the office exterior t
 For each floor, first hit wins:
 
 1. **This browser**, `localStorage` key `bothq.floorThemes`, a map of floor name → interior id. The Theme menu writes it. `office` forces the plain interior. An empty value (Auto) removes the key.
-2. **The feed**, a message `{"floor_themes":{"Ranch":"office"}}`. Keys are floor names, matched case-insensitively. Keys merge across messages; `"auto"` or `""` clears one key. A saved choice for that floor wins over the feed. The topic stays in the hash. See `docs/CONTRACT.md`.
+2. **The feed**, a message `{"floor_themes":{"Ranch":"office"}}`. Keys are floor names, matched case-insensitively. Keys merge across messages; `"auto"` or `""` clears one key. A saved choice for that floor wins over the feed. The feed link stays in the fragment (`#feed=` and `key=`). See `docs/CONTRACT.md`.
 3. **The keyword table** above. A guess of `office` stops here, as the plain interior.
 4. **The exterior theme**, when its id is also an interior (`ranch`). `Unassigned` reaches this step.
 5. **The plain office.**

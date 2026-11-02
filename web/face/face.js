@@ -2,6 +2,8 @@
 // The eyes follow the cursor (Lively forwards mouse moves to the wallpaper); with no cursor around they wander,
 // blink, glance at whichever bot needs the user, and get sleepy when every bot is resting. Data: /api/state (the
 // journal server); without it, the bundled demo state animates on its own. At most 30 frames per second.
+// A private feed is #feed=<urlencoded base>&key=<read key>, same fragment as the dashboard.
+import { feedFromHash, startPrivateFeed } from '../feed.js';
 
 const STATUS = {
   working: { text: 'working', c: 'var(--working)' },
@@ -584,28 +586,19 @@ setBot(params.get('bot') || (() => { try { return localStorage.getItem('gbw.bot'
 window.grokBot = { setBot };
 window.livelyPropertyListener = (name, value) => {
   if (name === 'botColor') setBot(Number(value) === 1 ? 'black' : 'white');
-  if (name === 'feed') {                                 // the user's bots channel, typed into Lively's settings
-    const next = String(value ?? '').trim();
-    if (next === (FEED || '')) return;
-    try { if (next) localStorage.setItem('gbw.feed', next); else localStorage.removeItem('gbw.feed'); } catch { /* not remembered */ }
-    location.replace(location.pathname + (next ? `#${encodeURIComponent(next)}` : ''));   // in the hash: never sent to a server
-    if (next) location.reload();                         // a hash change alone doesn't reload the page
+  if (name === 'feed') {                                 // paste #feed=<base>&key=<read key>, kept in the hash
+    const next = String(value ?? '').trim().replace(/^#/, '');
+    const hash = next ? `#${next}` : '';
+    if (hash === location.hash) return;
+    location.replace(location.pathname + location.search + hash);
+    if (next) location.reload();
   }
 };
 
-// ---------- the user's own bots: their channel on ntfy.sh ----------
-// A link with #<channel> (or the older ?feed=<channel>), remembered after that, connects the wallpaper to the user's
-// bots; the hash never reaches GitHub Pages, and &ntfy=<https server> picks a self-hosted ntfy. Every bot posts one
-// line per status change, {"bot":"…","status":"…","step":"…"}, plus roster, looks and usage lines (README), to the
-// channel with plain curl; nothing else runs on the bots' box. The page reads the last 12 hours, then listens live.
-const stored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
-const HASH = /^#([A-Za-z0-9_-]{6,64})(?:&ntfy=([^&]+))?$/.exec(location.hash);
-function httpsServer(raw) {
-  try { const u = new URL(raw); return u.protocol === 'https:' || u.hostname === 'localhost' ? (u.origin + u.pathname).replace(/\/+$/, '') : null; } catch { return null; }
-}
-const FEED = HASH?.[1] || params.get('feed') || stored('gbw.feed');
-const NTFY = httpsServer(HASH?.[2] ? decodeURIComponent(HASH[2]) : params.get('ntfy') || '') || stored('gbw.ntfy') || 'https://ntfy.sh';
-if (HASH || params.get('feed')) { try { localStorage.setItem('gbw.feed', FEED); localStorage.setItem('gbw.ntfy', NTFY); } catch { /* private mode: not remembered */ } }
+// ---------- the user's own bots: a private feed in the fragment ----------
+// #feed=<urlencoded base>&key=<read key>. The fragment never reaches GitHub Pages. The read key is sent only
+// as Authorization: Bearer to that base. Bots POST the same JSON lines to <base>/post with a write key.
+const LINK = feedFromHash(location.hash);
 const CYR = {
   а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o',
   п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '', э: 'e',
@@ -656,7 +649,7 @@ function applyLine(text, time) {                         // a status, roster, lo
   return true;
 }
 // the channel keeps 12 hours, the wallpaper remembers every bot it has seen: a quiet bot stays on screen, resting
-const MEMORY_KEY = `gbw.bots.${FEED}`;
+const MEMORY_KEY = `gbw.bots.${LINK ? LINK.base : 'demo'}`;
 function remember() { try { localStorage.setItem(MEMORY_KEY, JSON.stringify({ bots: state.bots, looks, usage: state.usage })); } catch { /* not remembered */ } }
 function settleQuiet() {                                 // a finished task rests after 30 min, a silent one after 3 h
   const now = Date.now();
@@ -667,28 +660,24 @@ function settleQuiet() {                                 // a finished task rest
   }
   return changed;
 }
-async function connectFeed() {
+function connectFeed() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(MEMORY_KEY)) || {}; } catch { /* nothing remembered yet */ }
-  if (!saved.bots) saved = { bots: saved };              // the first version remembered the bots alone
+  if (!saved.bots) saved = { bots: saved };
   looks = saved.looks || {};
   state = { bots: saved.bots, usage: saved.usage ?? null };
-  const base = `${NTFY}/${encodeURIComponent(FEED)}`;
-  try {
-    const text = await (await fetch(`${base}/json?poll=1&since=12h`, { cache: 'no-store' })).text();
-    for (const line of text.split('\n')) {
-      if (!line) continue;
-      const m = JSON.parse(line);
-      if (m.event === 'message') applyLine(m.message, m.time);
-    }
-  } catch { /* offline for now: show what is remembered, the live stream fills it */ }
   settleQuiet();
   remember();
   render(state);
-  const live = new EventSource(`${base}/sse`);
-  live.onmessage = (e) => {
-    try { const m = JSON.parse(e.data); if (m.event === 'message' && applyLine(m.message, m.time)) { remember(); render(state); } } catch { /* not a status line */ }
-  };
+  startPrivateFeed(LINK, {
+    onBatch(messages) {
+      let changed = false;
+      for (const m of messages) {
+        if (m?.event === 'message' && applyLine(m.message, m.time)) changed = true;
+      }
+      if (changed) { remember(); render(state); }
+    },
+  });
   setInterval(() => { if (settleQuiet()) { remember(); render(state); } }, 60e3);
 }
 
@@ -716,7 +705,7 @@ async function startDemo() {
     render(state);
   }, 3500);
 }
-if (FEED) connectFeed();
+if (LINK) connectFeed();
 else {
   fetch('../data/demo-looks.json').then((r) => (r.ok ? r.json() : {})).then((j) => { looks = j.looks || j || {}; if (state) { crew = ''; needs.innerHTML = ''; render(state); } }).catch(() => {});
   poll();
