@@ -1,4 +1,4 @@
-// Ops floor: a bunkhouse. Saddle, lasso, a wanted poster. The outside ranch theme is separate.
+// Bunkhouse interior. Saddle, lasso, a wanted poster. The outside ranch theme is separate.
 import * as THREE from 'three';
 import { box, cachedProps, canvasTex, cluster, cyl, mat, sign } from '../kit.js';
 import { hungTexasFlag } from '../texas-flag.js';

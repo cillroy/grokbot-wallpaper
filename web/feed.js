@@ -5,8 +5,19 @@
 // GET <base>/feed            the backlog, oldest first, on the first poll (no since)
 // GET <base>/feed?since=<id> messages newer than that id, oldest first, every 5 s
 // Each item is { id, time (unix seconds), event: "message", message: "<JSON string>" }.
-// The JSON strings are the same lines as before: status, roster, looks, usage, groups, chat, routines, floor_themes.
 // A failed poll waits 30 s and tries again. The last lines are cached in this browser so a quiet outage is not an empty office.
+//
+// Lines (one JSON object per message, at most 4 KB, anything else is dropped):
+//   {"bot":"…","status":"working|idle|waiting_user|error|done","step":"…"}     a status change
+//   {"roster":["Bot A","Bot B"]}                                                every bot appears, idle until it posts
+//   {"looks":{"Bot A":{"shape":"sphere","color":"#RRGGBB","accessory":"none"}}} how each bot's blob looks
+//   {"type":"usage","total_used_pct":37,"resets_at":"…","bots":{"Bot A":4.1}}  the weekly limit meter
+//   {"groups":{"Bot A":"Personal","Bot B":"Home IT"}}                         sidebar sections, one floor each
+//   {"chat":{"Bot A":"grokbot://app/v1/agent?id=…"}}                         each bot's chat, for «Open chat»
+//   {"floor_themes":{"Ranch":"office"}}                                       optional interior override
+//   {"routines":{"bot":"Bot A","items":[{"name":"…","schedule":"…","next_run":"ISO"}]}}   a bot's routines
+// On top of the server's state the office gets state.finished (done lines of the last 24 h, newest first) and
+// state.routines (every bot's routines, soonest first), for the «Finished» and «Routines» panels.
 import { StateStore, botIdFor } from './lib/state.js';
 
 const MAX_LINE = 4096, KEEP = 600, TICK_MS = 30e3, DAY_MS = 24 * 3600e3;
@@ -126,7 +137,7 @@ export function connectFeed({ base, key }, onState, onStatus) {
       store.setBotsConfig(cfg);
       return true;
     }
-    if (isMap(rec.groups)) {
+    if (isMap(rec.groups)) {                             // {"groups":{"Bot A":"Personal"}}: each label is one floor, used as written
       for (const [name, team] of Object.entries(rec.groups).slice(0, 400)) {
         if (typeof team === 'string' && team.trim()) (cfg[name] ||= {}).floor = team.trim().slice(0, 40);
       }
@@ -140,7 +151,7 @@ export function connectFeed({ base, key }, onState, onStatus) {
       store.setBotsConfig(cfg);
       return true;
     }
-    if (isMap(rec.floor_themes)) {
+    if (isMap(rec.floor_themes)) {                       // {"floor_themes":{"Ranch":"office"}} — keys merge; "" or "auto" clears one
       for (const [name, id] of Object.entries(rec.floor_themes).slice(0, 40)) {
         if (typeof name !== 'string' || !name.trim()) continue;
         const keyName = name.trim().slice(0, 40);

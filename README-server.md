@@ -84,7 +84,7 @@ a look with neither a usable shape nor a usable colour becomes `null`. Served as
 {"X Writer": "x-content", "Some Bot": "Новый отдел"}
 {"floors": [{"id": "ops", "name": "Операции"}], "bots": {"Some Bot": "ops"}}
 ```
-Floor of a bot: `bots.json` floor, else `floors.json`, else its `group`, else `general` ("Общий этаж").
+Floor of a bot: `bots.json` floor, else `floors.json`, else its `group`, else `unassigned` ("Unassigned"). The group string is the floor name as written.
 Max 20 bots per floor, the 21st goes to `<id>-2` ("<name> · 2"). Desk numbers are assigned in order of
 first sight and stay stable while the server runs (after a restart they are rebuilt from the journal tail).
 

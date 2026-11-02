@@ -25,8 +25,8 @@ accessory is one of: none, glasses, stem, antenna, bow.
 color is a six-digit hex colour with a number sign in front (for example a blue like 2D84F5). Post one line (several lines in the same format if it would pass 4000 characters):
 {"looks":{"Bot A":{"shape":"sphere","color":"<hex colour>","accessory":"none"}}}
 
-5. Sort my bots into 3 to 6 teams by their roles, with short English team names (each team gets its own floor on the dashboard). Put yourself and any helper or test bots into one team, for example Ops. Post them:
-{"groups":{"Bot A":"Content","Bot B":"Finance"}}
+5. Post one floor label per bot, using the sidebar section name you already use (any label is fine, for example Personal, Work, or Home IT). Each distinct label is one floor, shown as written. Leave a bot out of this message and it stays on the Unassigned floor. Same curl, body:
+{"groups":{"Bot A":"Personal","Bot B":"Work"}}
 
 6. Post each bot's chat link, the app link with its id (grokbot, colon, two slashes, then app/v1/agent?id= and the id). Skip a bot if you don't know its id:
 {"chat":{"Bot A":"<chat link>"}}

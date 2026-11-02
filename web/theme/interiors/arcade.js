@@ -1,4 +1,4 @@
-// Dev floor: a two-cabinet arcade. Neon marquees, pixel screens, a joystick.
+// Arcade interior. Neon marquees, pixel screens, a joystick.
 import * as THREE from 'three';
 import { box, cachedProps, canvasTex, cluster, cyl, lit, mat, sign } from '../kit.js';
 

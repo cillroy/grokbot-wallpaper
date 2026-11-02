@@ -63,33 +63,42 @@ Keep a theme's geometry, textures and CSS in its own files under `web/theme/`. N
 
 The exterior (sky, light, ground, scenery, and the closed shell of the tower) is still the one theme above. Each floor can dress its own interior: floor and wall tint, furniture colour, a few procedural props, the glass band of that floor when it is closed, and an accent on that floor's button and team card.
 
-Floors with no setting follow the exterior. Unknown team names do the same, so a ranch exterior still tints every unnamed floor and today's look is unchanged. A known team name picks an interior even when the exterior is the office.
+A floor's name is the label from the `groups` message, used as written. There is no built-in list of team names. A bot with no label is on a floor called `Unassigned`.
 
-### Default map
+### Keyword guess
 
-This table is `DEFAULT_FLOOR_THEMES` in `web/theme/interiors.js`. Match is case-insensitive on the floor name (the team name from the feed).
+`FLOOR_THEME_RULES` in `web/theme/floor-theme-rules.js` is the only table. Add a row there to extend it. The first matching row wins. Matching is case-insensitive. A keyword of three or more letters matches as a substring. `it`, `pc`, and `art` match only as a whole word, so `community` is not a casita and `start` is not a coffee bar.
 
-| Floor name | Interior | What you see |
+`Unassigned`, and an overflow floor named `Unassigned · 2`, skip the table and follow the exterior.
+
+| Keywords in the floor name | Interior | What you see |
 |---|---|---|
-| Design | `coffee` | Coffee bar: chalk menu, espresso machine, cups, warm wood |
-| Dev | `arcade` | Arcade: two neon cabinets, pixel screens, a joystick |
-| Content | `studio` | Studio: ring light, camera, mic, posters |
-| Privacy | `vault` | Vault: safe door, filing cabinets, shredder, dim metals |
-| Home | `casita` | Build site: sawhorses, lumber, blueprint, hard hats |
-| Ops | `ranch` | Bunkhouse: saddle, lasso, wanted poster, a small Texas flag on the wall |
+| content, marketing, social, instagram, celiac, food, taste, media, publish | `studio` | Studio: ring light, camera, mic, posters |
+| privacy, security, scrub, call | `vault` | Vault: safe door, filing cabinets, shredder, dim metals |
+| design, art, brand, creative | `coffee` | Coffee bar: chalk menu, espresso machine, cups, warm wood |
+| casita | `casita` | Casita: sawhorses, lumber, blueprint, hard hats |
+| ranch, farm, cowboy, texas | `ranch` | Bunkhouse: saddle, lasso, wanted poster, a small Texas flag on the wall |
+| home, house, it, tech, pc | `casita` | Casita, as above |
+| personal | `ranch` | Bunkhouse, as above |
+| dev, code, engineer, studio, studios, build, app | `arcade` | Arcade: two neon cabinets, pixel screens, a joystick |
+| work, job, career, office | `office` | The plain office interior |
+
+Content words are listed before `studio`, so `Content Studio` is a studio and `Studios` alone is an arcade. `casita` is listed before the ranch words. `home` is listed before `office`, so `Home Office` is a casita. A guess of `office` is the plain interior even when the building outside is the ranch.
+
+A name that matches nothing follows the exterior theme. On the office exterior that is the plain interior, so a ranch exterior still tints those floors.
 
 ### What wins
 
 For each floor, first hit wins:
 
 1. **This browser**, `localStorage` key `bothq.floorThemes`, a map of floor name → interior id. The Theme menu writes it. `office` forces the plain interior. An empty value (Auto) removes the key.
-2. **The feed**, a message `{"floor_themes":{"Ops":"ranch"}}`. Keys merge across messages; `"auto"` or `""` clears one key. A saved choice for that floor wins over the feed. The topic stays in the hash. See `docs/CONTRACT.md`.
-3. **The default map** above.
-4. **The exterior theme**, when its id is also an interior (`ranch`).
+2. **The feed**, a message `{"floor_themes":{"Ranch":"office"}}`. Keys are floor names, matched case-insensitively. Keys merge across messages; `"auto"` or `""` clears one key. A saved choice for that floor wins over the feed. The feed link stays in the fragment (`#feed=` and `key=`). See `docs/CONTRACT.md`.
+3. **The keyword table** above. A guess of `office` stops here, as the plain interior.
+4. **The exterior theme**, when its id is also an interior (`ranch`). `Unassigned` reaches this step.
 5. **The plain office.**
 
 An unknown id is ignored and the next step runs.
 
-The menu is the Theme button in the top bar: Building reloads the page (the sky and the shell change), each floor's select does not. Wallpaper mode has no menu; it still applies the saved choices, the feed, and the default map.
+The menu is the Theme button in the top bar: Building reloads the page (the sky and the shell change), each floor's select does not. Wallpaper mode has no menu; it still applies the saved choices, the feed, and the keyword table.
 
 Adding an interior is a module under `web/theme/interiors/` plus a row in `interiors.js`. It exports `{ id, label, accent, ink, glass, tint, createProps }`. `tint` is `{ floor, wall, wood, metal, fabric, glass }` and recolors that floor's own materials. `createProps()` returns a cloneable group parked at the back-right of the room, clear of the desks and the left-wall screens. Props stay on layer 0. Do not add lights or per-frame work.
